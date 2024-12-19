@@ -19,7 +19,7 @@ s3 = boto3.client(
 )
 
 # Prefijo (carpeta) que deseas descargar
-CARPETA_S3 = 'Checklist/'  # Cambié el valor para que sea un prefijo de carpeta con barra al final
+CARPETA_S3 = 'ImagenCliente/' 
 
 # Carpeta local donde deseas guardar las imágenes
 LOCAL_DIR = r'E:\media\img\Prooder_s3'
