@@ -19,35 +19,53 @@ s3 = boto3.client(
 )
 
 # Prefijo (carpeta) que deseas descargar
-CARPETA_S3 = 'Checklist/'  
+CARPETA_S3 = 'Checklist/'  # Cambié el valor para que sea un prefijo de carpeta con barra al final
 
 # Carpeta local donde deseas guardar las imágenes
-LOCAL_DIR = r'E:\media\img'
+LOCAL_DIR = r'E:\media\img\Prooder_s3'
 
 if not os.path.exists(LOCAL_DIR):
     os.makedirs(LOCAL_DIR)
 
 def descargar_imagenes_s3(bucket_name, carpeta_s3, local_dir):
-    # Listar objetos en el bucket con el prefijo (simula la carpeta)
-    response = s3.list_objects_v2(Bucket=bucket_name, Prefix=carpeta_s3)
+    # Inicializar un marcador para la paginación
+    continuation_token = None
     
-    if 'Contents' in response:
-        # Iterar sobre los objetos en la carpeta especificada
-        for obj in response['Contents']:
-            file_name = obj['Key']
-            local_path = os.path.join(local_dir, file_name.replace(carpeta_s3, ""))  # Eliminar el prefijo de la ruta
+    while True:
+        # Listar objetos en el bucket con el prefijo (simula la carpeta)
+        if continuation_token:
+            response = s3.list_objects_v2(
+                Bucket=bucket_name,
+                Prefix=carpeta_s3,
+                ContinuationToken=continuation_token
+            )
+        else:
+            response = s3.list_objects_v2(Bucket=bucket_name, Prefix=carpeta_s3)
 
-            # Crear subdirectorios si no existen
-            os.makedirs(os.path.dirname(local_path), exist_ok=True)
+        if 'Contents' in response:
+            # Iterar sobre los objetos en la carpeta especificada
+            for obj in response['Contents']:
+                file_name = obj['Key']
+                
+                # Filtrar solo los objetos que están en las subcarpetas dentro de 'Checklist/'
+                if file_name.startswith(carpeta_s3):  # Confirmar que está dentro del prefijo
+                    local_path = os.path.join(local_dir, file_name)  # Usar la ruta completa del archivo
 
-            # Descargar el archivo solo si no existe localmente
-            if not os.path.exists(local_path):
-                print(f"Descargando {file_name}...")
-                s3.download_file(bucket_name, file_name, local_path)
-            else:
-                print(f"{file_name} ya existe, saltando descarga.")
-    else:
-        print(f"No se encontraron objetos en la carpeta {carpeta_s3} del bucket {bucket_name}.")
+                    # Crear la estructura de carpetas si no existe
+                    os.makedirs(os.path.dirname(local_path), exist_ok=True)
+
+                    # Descargar solo si el archivo no existe en el destino
+                    if not os.path.exists(local_path):
+                        print(f"Descargando {file_name}...")
+                        s3.download_file(bucket_name, file_name, local_path)
+                    else:
+                        print(f"{file_name} ya existe, saltando descarga.")
+        
+        # Si hay más objetos, paginar
+        if response.get('IsTruncated'):  # Si hay más páginas
+            continuation_token = response['NextContinuationToken']
+        else:
+            break  # No hay más objetos
 
     print("Descarga completada.")
 
